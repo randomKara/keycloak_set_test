@@ -1,0 +1,98 @@
+{
+  "realm": "myrealm",
+  "enabled": true,
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+       "attributes":{
+        "name" : ["Administrator"]
+      },
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "user",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user",
+          "temporary": false
+        }
+      ],
+       "attributes":{
+        "name" : ["User"]
+      },
+       "realmRoles": [
+      "user"
+       ]
+    }
+  ],
+   "roles": {
+        "realm": [
+            {
+                "name": "admin",
+                 "composite": false,
+                   "clientRole": false
+            },
+            {
+                "name": "user",
+                  "composite": false,
+                   "clientRole": false
+             }
+        ]
+    },
+  "clients": [
+    {
+      "clientId": "application-a",
+      "name": "Application A",
+      "enabled": true,
+      "publicClient": false,
+       "secret": "a-secret",
+      "redirectUris": [
+        "http://localhost:5000/*"
+      ],
+     "adminUrl": "http://app-a:5000",
+      "webOrigins": [
+        "http://localhost:5000"
+      ]
+    },
+     {
+      "clientId": "application-b",
+      "name": "Application B",
+      "enabled": true,
+      "publicClient": false,
+       "secret": "b-secret",
+      "redirectUris": [
+         "http://localhost:5001/*"
+      ],
+     "adminUrl": "http://application-b:5000",
+      "webOrigins": [
+        "http://localhost:5001"
+      ]
+    },
+    {
+      "clientId": "reverse-proxy-client",
+      "name": "Reverse Proxy Client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "reverse-proxy-secret",
+      "redirectUris": [
+        "http://auth.test:8085/oauth2callback"
+      ],
+       "adminUrl": "http://auth.test:8085",
+      "webOrigins": [
+          "http://auth.test:8085"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+version: "3.8"
+
+services:
+  keycloak:
+    hostname: keycloak
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.3
+    command: ["start-dev", "--import-realm"]
+    restart: always
+    
+  application-a:
+    build: ./application-a
+    container_name: application-a
+    ports:
+      - "5000:5000"
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: myrealm
+      KEYCLOAK_CLIENT_ID: application-a
+      KEYCLOAK_CLIENT_SECRET: a-secret
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.4
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: always
+
+  application-b:
+    build: ./application-b
+    container_name: application-b
+    ports:
+      - "5001:5000"
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: myrealm
+      KEYCLOAK_CLIENT_ID: application-b
+      KEYCLOAK_CLIENT_SECRET: b-secret
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.5
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: always
+
+  application-c:
+    build: ./application-c
+    container_name: application-c
+    ports:
+      - "5002:5000"
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.6
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: always
+
+  reverse-proxy:
+    build: ./reverse-proxy
+    container_name: reverse-proxy
+    ports:
+      - "8085:80"
+    networks:
+      app-network:
+         ipv4_address: 172.28.0.2
+    depends_on:
+      - keycloak
+      - application-c
+    restart: always
+    environment:
+        KEYCLOAK_URL: http://keycloak:8080
+    volumes:
+      - ./reverse-proxy/proxy.conf:/usr/local/apache2/conf/httpd.conf
+      - ./reverse-proxy/oidc.conf:/usr/local/apache2/conf/extra/oidc.conf
+
+  dns-proxy:
+      image: andyshinn/dnsmasq
+      container_name: dns-proxy
+      ports:
+          - "53:53/udp"
+          - "53:53/tcp"
+      networks:
+          app-network:
+            ipv4_address: 172.28.0.7
+      volumes:
+          - ./dnsmasq.conf:/etc/dnsmasq.conf
+      restart: always
+
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
