@@ -105,5 +105,13 @@ This project demonstrates a multi-application setup using Keycloak for authentic
 - **`dnsmasq.conf`:** Configuration file for the DNS proxy.
 - **`.git/`:** Git repository configuration files.
 
-## Explanation of the Code
-A more detailed code explanation is available in the ISSUES.md file in the github repository.
+## Explanation of Issue
+A more detailed issues explanation is available in the ISSUES.md file in the github repository.
+
+# Resources
+* How to add preconfigured realm - https://github.com/fuinorg/keycloak-testready
+* `mod_auth_oidc`: how to run it behind reverse proxy - https://github.com/OpenIDC/mod_auth_openidc/wiki#8-how-do-i-run-mod_auth_openidc-behind-a-reverse-proxy
+*  Reverse proxy behind app using mod_auth_openidc example: https://github.com/susom/apache-proxy
+
+
+
