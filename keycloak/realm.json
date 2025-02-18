@@ -81,6 +81,20 @@
       ]
     },
     {
+      "clientId": "application-d",
+      "name": "Application D",
+      "enabled": true,
+      "publicClient": false,
+       "secret": "d-secret",
+      "redirectUris": [
+        "http://localhost:5003/*"
+      ],
+     "adminUrl": "http://app-d:5000",
+      "webOrigins": [
+        "http://localhost:5003"
+      ]
+    },
+    {
       "clientId": "reverse-proxy-client",
       "name": "Reverse Proxy Client",
       "enabled": true,
@@ -811,7 +825,27 @@
   "enabledEventTypes": [],
   "adminEventsEnabled": false,
   "adminEventsDetailsEnabled": false,
-  "identityProviders": [],
+  "identityProviders": [
+    {
+      "alias": "keycloak-oidp",
+      "providerId": "keycloak-oidc",
+      "enabled": true,
+      "trustEmail": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "displayName": "Keycloak IdP",
+      "config": {
+        "clientId": "application-d",
+        "clientSecret": "d-secret",
+        "defaultScope": "openid profile email",
+        "discoveryUrl": "http://idp:8080/realms/idp/.well-known/openid-configuration",
+        "useJwksUrl": "true",
+        "jwksUrl": "http://idp:8080/realms/idp/protocol/openid-connect/certs",
+        "validateSignature": "true",
+        "authorizationUrl": "http://idp:8080/realms/idp/protocol/openid-connect/auth",
+        "tokenUrl": "http://idp:8080/realms/idp/protocol/openid-connect/token"
+      }
+    }
+  ],
   "identityProviderMappers": [],
   "components": {
     "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [

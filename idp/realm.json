@@ -1,0 +1,86 @@
+{
+    "realm": "idp",
+    "enabled": true,
+    "users": [
+      {
+        "username": "admin",
+        "enabled": true,
+        "credentials": [
+          {
+            "type": "password",
+            "value": "admin",
+            "temporary": false
+          }
+        ],
+        "attributes":{
+          "name" : ["Administrator"]
+        },
+        "realmRoles": [
+          "admin"
+        ]
+      },
+      {
+        "username": "user",
+        "enabled": true,
+        "credentials": [
+          {
+            "type": "password",
+            "value": "user",
+            "temporary": false
+          }
+        ],
+        "attributes":{
+          "name" : ["User"]
+        },
+        "realmRoles": [
+        "user"
+         ]
+      },
+      {
+        "username": "idp",
+        "enabled": true,
+        "credentials": [
+          {
+            "type": "password",
+            "value": "idp",
+            "temporary": false
+          }
+        ],
+        "attributes":{
+          "name" : ["Idp User"]
+        },
+        "realmRoles": [
+        "user"
+         ]
+      }
+    ],
+    "roles": {
+      "realm": [
+        {
+          "name": "admin",
+          "composite": false,
+          "clientRole": false
+        },
+        {
+          "name": "user",
+          "composite": false,
+          "clientRole": false
+        }
+      ]
+    },
+    "clients": [
+      {
+        "clientId": "application-d",
+        "name": "IdP Client",
+        "enabled": true,
+        "publicClient": false,
+        "secret": "d-secret",
+        "redirectUris": [
+          "http://keycloak:8080/realms/myrealm/broker/keycloak-oidp/endpoint"
+        ],
+        "webOrigins": [
+          "*"
+        ]
+      }
+    ]
+  }
