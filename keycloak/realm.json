@@ -107,6 +107,55 @@
       "webOrigins": [
           "http://auth.test:8085"
       ]
+    },
+    {
+      "clientId": "reverse-proxy-user-client",
+      "name": "Reverse Proxy User Client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "reverse-proxy-user-secret",
+      "redirectUris": [
+        "http://user.auth.test:8086/oauth2callback"
+      ],
+       "adminUrl": "http://user.auth.test:8086",
+      "webOrigins": [
+          "http://user.auth.test:8086"
+      ]
+    },
+    {
+      "clientId": "reverse-proxy-admin-client",
+      "name": "Reverse Proxy Admin Client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "reverse-proxy-admin-secret",
+      "redirectUris": [
+        "http://admin.auth.test:8087/oauth2callback"
+      ],
+       "adminUrl": "http://admin.auth.test:8087",
+      "webOrigins": [
+          "http://admin.auth.test:8087"
+      ]
+    },
+    {
+      "clientId": "application-e",
+      "name": "My Client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "myclient-secret",
+      "redirectUris": [
+        "http://user/app/callback"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "fullScopeAllowed": true,
+      "bearerOnly": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true
     }
   ],
   "clientScopes": [

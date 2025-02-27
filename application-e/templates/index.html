@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flask App</title>
+</head>
+<body>
+    <h1>Bienvenue!</h1>
+    <p>{{ content }}</p>
+    {% if session.access_token %}
+        <a href="/logout">Se déconnecter</a>
+    {% endif %}
+</body>
+</html> 

@@ -102,6 +102,53 @@ services:
         condition: service_started
     restart: always  
 
+  application-e:
+    build: ./application-e
+    container_name: application-e
+    ports:
+      - "5004:5000"
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: myrealm
+      KEYCLOAK_CLIENT_E_ID: application-e
+      KEYCLOAK_CLIENT_E_SECRET: e-secret
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.11
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: always
+
+  reverse-proxy-user:
+    build: ./reverse-proxy-user
+    container_name: reverse-proxy-user
+    ports:
+      - "7777:80"
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.12
+    depends_on:
+      - keycloak
+      - application-e
+    restart: always
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+
+  reverse-proxy-admin:
+    build: ./reverse-proxy-admin
+    container_name: reverse-proxy-admin
+    ports:
+      - "7778:80"
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.13
+    depends_on:
+      - keycloak
+    restart: always
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+
   reverse-proxy:
     build: ./reverse-proxy
     container_name: reverse-proxy
