@@ -28,7 +28,7 @@ def index():
 
 @app.route('/login')
 def login():
-    authorization_url = f"{KEYCLOAK_URL}/realms//{REALM_NAME}/protocol/openid-connect/auth"
+    authorization_url = f"{KEYCLOAK_URL}/realms//{REALM_NAME}/protocol/openid-connect/auth" # ???? pourquoi deux "//" ?
     redirect_uri = PROXY_URL + "/callback"  # Utiliser l'URL du reverse proxy
     params = {
         'client_id': CLIENT_ID,
