@@ -2,6 +2,7 @@ from flask import Flask, session, redirect, request, render_template
 import requests
 import os
 import jwt
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -13,22 +14,28 @@ CLIENT_SECRET = "myclient-secret" #A changer avec le secret du client keycloak
 REALM_NAME = "myrealm"
 PROXY_URL = "http://user/app" # URL du reverse proxy
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'access_token' not in session:
+            return redirect('/app/login')
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
+@login_required
 def index():
-    if 'access_token' in session:
-        headers = {'Authorization': 'Bearer ' + session['access_token']}
-        try:
-            response = requests.get("http://localhost:5000/protected", headers=headers) #Appel interne, on utilise le nom du service
-            response.raise_for_status()
-            return render_template('index.html', content=response.text)
-        except requests.exceptions.RequestException as e:
-            return f"Erreur lors de l'appel à /protected: {e}"
-    else:
-        return render_template('index.html', content="Non connecté. <a href='/login'>Se connecter</a>")
+    access_token = session['access_token']
+    try:
+        decoded_token = jwt.decode(access_token, options={"verify_signature": False})
+        user_name = decoded_token.get('name', 'Utilisateur')  # Récupérer le nom de l'utilisateur
+        return render_template('index.html', content=f"Bonjour {user_name} !")
+    except Exception as e:
+        return f"Erreur lors du décodage du jeton d'accès: {e}"
 
 @app.route('/login')
 def login():
-    authorization_url = f"{KEYCLOAK_URL}/realms//{REALM_NAME}/protocol/openid-connect/auth" # ???? pourquoi deux "//" ?
+    authorization_url = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/auth" # ???? pourquoi deux "//" ?
     redirect_uri = PROXY_URL + "/callback"  # Utiliser l'URL du reverse proxy
     params = {
         'client_id': CLIENT_ID,
@@ -39,11 +46,10 @@ def login():
     auth_url = authorization_url + '?' + '&'.join([f"{k}={v}" for k, v in params.items()])
     return redirect(auth_url)
 
-
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
-    token_url = f"http://keycloak:8080/realms/{REALM_NAME}/protocol/openid-connect/token"
+    token_url = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/token"
     redirect_uri = PROXY_URL + "/callback"
     data = {
         'grant_type': 'authorization_code',
@@ -55,20 +61,12 @@ def callback():
     response = requests.post(token_url, data=data)
     tokens = response.json()
     access_token = tokens['access_token']
+    session['access_token'] = access_token  # Stocker le jeton dans la session
+    return redirect('/app/')
 
-    # Décoder le jeton d'accès
-    try:
-        decoded_token = jwt.decode(access_token, options={"verify_signature": False})
-        return f"Jeton d'accès décodé: {decoded_token}"
-    except Exception as e:
-        return f"Erreur lors du décodage du jeton d'accès: {e}"
-
-@app.route('/logout')
-def logout():
-    session.pop('access_token', None)
-    return redirect('/')
 
 @app.route('/protected')
+@login_required
 def protected():
     # Cette route est protégée et ne devrait être accessible qu'avec un token valide.
     return "Contenu protégé! Vous êtes authentifié."

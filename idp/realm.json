@@ -70,11 +70,11 @@
     },
     "clients": [
       {
-        "clientId": "application-d",
+        "clientId": "applications",
         "name": "IdP Client",
         "enabled": true,
         "publicClient": false,
-        "secret": "d-secret",
+        "secret": "idp-secret",
         "redirectUris": [
           "http://keycloak:8080/realms/myrealm/broker/keycloak-oidp/endpoint"
         ],
