@@ -1,8 +1,9 @@
-Ce projet démontre une configuration multi-application utilisant Keycloak pour l'authentification et l'autorisation. Il inclut plusieurs applications (A, B, C, D et E), trois reverse proxies (un pour l'application C, un pour l'application E et un pour l'administration de Keycloak), un serveur Keycloak et un proxy DNS, tous orchestrés avec Docker Compose.
+Ce projet démontre une configuration multi-application utilisant Keycloak pour l'authentification et l'autorisation. Il inclut plusieurs applications (A, B, C, D et E), cinq reverse proxies (un pour l'application C, un pour l'application E, un pour l'administration de Keycloak, un pour l'application D et un pour une autre instance de Keycloak), un serveur Keycloak, un serveur Keycloak IDP et un proxy DNS, tous orchestrés avec Docker Compose.
 
 ## Aperçu
 
 - **Keycloak:** Le serveur de gestion d'identité et d'accès.
+- **Keycloak IDP:** Un serveur Keycloak servant de fournisseur d'identité (IDP).
 - **Application A & B:** Applications Flask (Python) qui nécessitent une authentification utilisateur via Keycloak. L'application B nécessite le rôle "admin".
 - **Application C:** Une application Flask (Python) qui affiche les informations de l'utilisateur extraites des en-têtes par le reverse proxy.
 - **Application D:** Une application Flask (Python) qui utilise un client Keycloak spécifique et nécessite une authentification utilisateur via Keycloak.
@@ -10,6 +11,8 @@ Ce projet démontre une configuration multi-application utilisant Keycloak pour 
 - **Reverse Proxy (Application C):** Un serveur Apache agissant comme passerelle, authentifiant les requêtes via Keycloak et passant les informations de l'utilisateur dans les en-têtes à l'application C.
 - **Reverse Proxy (Application E):** Un serveur Apache agissant comme passerelle pour l'application E.
 - **Reverse Proxy (Administration Keycloak):** Un serveur Apache agissant comme passerelle pour l'administration de Keycloak.
+- **Reverse Proxy (Application D):** Un serveur Apache agissant comme passerelle pour l'application D.
+- **Reverse Proxy (Keycloak):** Un serveur Apache agissant comme passerelle pour une autre instance de Keycloak.
 - **Proxy DNS:** Un serveur DNS pour la résolution de noms de domaine personnalisés à l'intérieur du réseau Docker.
 
 ## Fonctionnalités
@@ -21,6 +24,7 @@ Ce projet démontre une configuration multi-application utilisant Keycloak pour 
 - **DNS personnalisé:** Le proxy DNS permet d'accéder aux services à l'intérieur du réseau Docker en utilisant des noms de domaine personnalisés comme `auth.test`.
 - **Texte d'accueil configurable:** L'application A permet aux utilisateurs administrateurs de modifier le texte d'accueil affiché.
 - **Authentification manuelle via Keycloak:** L'application E utilise une authentification manuelle via Keycloak.
+- **Identity Provider (IDP) Brokerage:** L'application D démontre l'utilisation d'un IDP Keycloak pour l'authentification.
 
 ## Installation
 
@@ -67,13 +71,16 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
 | :---------------------------- | :---------------------- |
 | Keycloak                    | `http://localhost:8080` |
 | Keycloak à travers un RP     | `http://admin`          |
+| Keycloak IDP                | `http://localhost:8081` |
 | Application A               | `http://localhost:5000` |
 | Application B               | `http://localhost:5001` |
 | Application C               | `http://localhost:5002` |
 | Application C derrière RP  | `http://auth.test:8085` |
 | Application D               | `http://localhost:5003` |
+| Application D derrière RP  | `http://rp-d:7100`      |
 | Application E               | `http://localhost:5004` |
 | Application E à travers un RP | `http://user/app`        |
+| RP Keycloak                 | `http://rp-k:7101`      |
 
 3. **Se connecter via Keycloak:**
 
@@ -95,6 +102,7 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
 - **Application D:** Affiche un message de bienvenue avec le nom de l'utilisateur connecté. Permet l'utilisation d'un IDP (Identity Provider) pour la connexion.
 - **Application E:** Affiche le jeton d'accès décodé.
 - **Reverse Proxy Admin:** Interface d'administration de Keycloak.
+- **Reverse Proxy Keycloak (rp-k):** Reverse proxy pour une autre instance de Keycloak.
 
 ## Architecture du Projet
 
@@ -110,7 +118,12 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
 - Gère les utilisateurs, les rôles et les clients (applications).
 - Importe un realm préconfiguré à partir du dossier `keycloak/` au démarrage.
 
-### 3. Applications
+### 3. Keycloak IDP
+
+- Fournit une instance Keycloak supplémentaire servant de fournisseur d'identité (IDP).
+- Importe un realm préconfiguré à partir du dossier `idp/` au démarrage.
+
+### 4. Applications
 
 #### Application A (`application-a/`)
 
@@ -165,25 +178,28 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
     - `reverse-proxy/proxy.conf`: Configuration Apache pour le reverse proxy.
     - `reverse-proxy/oidc.conf` (reverse-proxy/oidc.conf:1-30): Configuration OIDC pour le reverse proxy.
 
-#### Application D (`application-d/`)
+#### Application D (`application-d/`, `rp-d/`)
 
 - **Fonctionnement :**
-    1. L'utilisateur accède à l'application D (`http://localhost:5003`).
-    2. L'application D redirige l'utilisateur vers Keycloak pour l'authentification via la route `/login` (application-d/app.py:40-42). Cette redirection est initiée par la fonction `keycloak.authorize_redirect`, qui utilise la configuration OIDC de l'application pour construire l'URL d'autorisation.
-    3. Keycloak agit comme un **Identity Broker** et authentifie l'utilisateur (nom d'utilisateur et mot de passe). Keycloak peut également fédérer l'authentification un autre keycloak qui sert d'**IDP** (Identiy Provider).
-    4. L'utilisateur se connecte sur l'IDP via le username `idp` et le mot de passe  `idp`. Cela va créer automatiquement un utilisateur dans l'Identity Broker et permettre la connection.
-    5. L'application D échange le code d'autorisation contre un jeton d'accès auprès de Keycloak en utilisant la fonction `keycloak.authorize_access_token()`.
-    6. L'application D extrait les informations de l'utilisateur (nom, rôles) du jeton d'accès et les stocke dans la session. La fonction `jwt.decode` est utilisée pour décoder le jeton d'accès et extraire les rôles.
-    7. L'application D affiche la page d'accueil avec un message de bienvenue personnalisé (application-d/app.py:36), affichant le nom de l'utilisateur connecté.
+    1. L'utilisateur accède au reverse proxy pour l'application D (`http://rp-d:7100`).
+    2. Le reverse proxy vérifie si l'utilisateur est authentifié auprès de Keycloak via `rp-k`.
+    3. Si l'utilisateur n'est pas authentifié, le reverse proxy redirige l'utilisateur vers Keycloak pour l'authentification.
+    4. Keycloak authentifie l'utilisateur (nom d'utilisateur et mot de passe).
+    5. Keycloak redirige l'utilisateur vers le reverse proxy.
+    6. Le reverse proxy transmet les informations de l'utilisateur à l'application D via les en-têtes HTTP (`X-User-Name`).
+    7. L'application D reçoit la requête avec les en-têtes contenant les informations de l'utilisateur.
+    8. L'application D affiche les informations de l'utilisateur.
 
 - **Points clés :**
-    - Utilise `authlib` pour simplifier l'interaction avec Keycloak en tant qu'IDP.
+    - Utilise un reverse proxy (`rp-d`) pour gérer l'authentification devant Keycloak.
+    - Le reverse proxy (`rp-d`) s'appuie sur une autre instance Keycloak (`rp-k`) pour valider l'identité de l'utilisateur.
     - La configuration du client Keycloak (ID et secret) est spécifique à l'application D, permettant une gestion granulaire des autorisations.
-    - La route `/login` utilise `keycloak.authorize_redirect` pour initier le flux d'autorisation.
-    - La route `/callback` utilise `keycloak.authorize_access_token` pour échanger le code d'autorisation contre un jeton d'accès.
 
 - **Fichiers importants :**
-    - `app.py` (application-d/app.py:1-55): Code principal de l'application Flask.
+    - `app.py` (application-d/app.py:1-14): Code principal de l'application Flask.
+    - `templates/user_info.html`: Template HTML pour afficher les informations de l'utilisateur.
+    - `rp-d/proxy.conf`: Configuration Apache pour le reverse proxy.
+    - `rp-d/oidc.conf`: Configuration OIDC pour le reverse proxy.
 
 #### Application E (`application-e/`, `reverse-proxy-user/`)
 
@@ -201,6 +217,76 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
     - `templates/index.html` (application-e/templates/index.html:1-13): Template HTML pour la page d'accueil.
     - `reverse-proxy-user/conf/httpd.conf`: Configuration Apache pour le reverse proxy.
     - `reverse-proxy-user/conf/httpd-vhosts.conf` (reverse-proxy-user/conf/httpd-vhosts.conf:1-19): Virtual host configuration pour le reverse proxy.
+
+#### Reverse Proxy Keycloak (rp-k) (`rp-k/`)
+
+- **Fonctionnement :**
+    1.  Le reverse proxy Keycloak (`rp-k`) agit comme une passerelle vers une autre instance Keycloak.
+    2.  Il reçoit les requêtes et les relaie vers le serveur Keycloak spécifié.
+
+- **Fichiers importants :**
+    - `rp-k/Dockerfile`: Instructions pour construire l'image Docker du reverse proxy Keycloak.
+    - `rp-k/conf/httpd.conf`: Fichier de configuration Apache pour le reverse proxy.
+    - `rp-k/conf/httpd-vhosts.conf`: Fichier de configuration Apache pour les virtual hosts.
+
+### 5. Reverse Proxies
+
+#### Reverse Proxy (Application C) (`reverse-proxy/`)
+
+- **Fonctionnement :**
+    1. L'utilisateur accède au reverse proxy pour l'application C (`http://auth.test:8085`).
+    2. Le reverse proxy vérifie si l'utilisateur est authentifié auprès de Keycloak.
+    3. Si l'utilisateur n'est pas authentifié, le reverse proxy redirige l'utilisateur vers Keycloak pour l'authentification.
+    4. Keycloak authentifie l'utilisateur (nom d'utilisateur et mot de passe).
+    5. Keycloak redirige l'utilisateur vers le reverse proxy.
+    6. Le reverse proxy extrait les informations de l'utilisateur (nom, rôles) du jeton d'accès fourni par Keycloak.
+    7. Le reverse proxy transmet les informations de l'utilisateur à l'application C via les en-têtes HTTP (`X-User-Name`, `X-User-Roles`) (reverse-proxy/oidc.conf:24-25).
+
+- **Fichiers importants :**
+    - `reverse-proxy/Dockerfile`: Instructions pour construire l'image Docker du reverse proxy.
+    - `reverse-proxy/proxy.conf`: Configuration Apache pour le reverse proxy.
+    - `reverse-proxy/oidc.conf` (reverse-proxy/oidc.conf:1-30): Configuration OIDC pour le reverse proxy.
+
+#### Reverse Proxy (Application E) (`reverse-proxy-user/`)
+
+- **Fonctionnement :**
+    1. L'utilisateur accède à l'application E via le reverse proxy (`http://user/app`).
+    2. Si l'utilisateur n'est pas connecté, l'application E affiche un lien vers la page de connexion (`+/login`).
+    3. Lorsque l'utilisateur clique sur le lien de connexion, il est redirigé vers Keycloak en restant sur le reverse proxy pour l'authentification.
+
+- **Fichiers importants :**
+    - `reverse-proxy-user/Dockerfile`: Instructions pour construire l'image Docker du reverse proxy.
+    - `reverse-proxy-user/conf/httpd.conf`: Configuration Apache pour le reverse proxy.
+    - `reverse-proxy-user/conf/httpd-vhosts.conf`: Virtual host configuration pour le reverse proxy.
+
+#### Reverse Proxy (Administration Keycloak) (`reverse-proxy-admin/`)
+
+- **Fonctionnement :**
+    1. L'utilisateur accède à l'interface d'administration de Keycloak via le reverse proxy (`http://admin`).
+    2. Le reverse proxy relaie les requêtes vers le serveur Keycloak.
+
+- **Fichiers importants :**
+    - `reverse-proxy-admin/Dockerfile`: Instructions pour construire l'image Docker du reverse proxy.
+    - `reverse-proxy-admin/conf/httpd.conf`: Configuration Apache pour le reverse proxy.
+    - `reverse-proxy-admin/conf/httpd-vhosts.conf`: Virtual host configuration pour le reverse proxy.
+
+#### Reverse Proxy (Application D) (`rp-d/`)
+
+- **Fonctionnement :**
+    1. L'utilisateur accède à l'application D via le reverse proxy (`http://rp-d:7100`).
+    2. Le reverse proxy vérifie si l'utilisateur est authentifié auprès de Keycloak via `rp-k`.
+    3. Si l'utilisateur n'est pas authentifié, le reverse proxy redirige l'utilisateur vers Keycloak pour l'authentification.
+    4. Le reverse proxy transmet les informations de l'utilisateur à l'application D via les en-têtes HTTP.
+
+- **Fichiers importants :**
+    - `rp-d/Dockerfile`: Instructions pour construire l'image Docker du reverse proxy.
+    - `rp-d/proxy.conf`: Configuration Apache pour le reverse proxy.
+    - `rp-d/oidc.conf`: Configuration OIDC pour le reverse proxy.
+
+### 6. Proxy DNS (`dns-proxy/`)
+
+- Fournit une résolution de noms de domaine personnalisée pour les services à l'intérieur du réseau Docker.
+- Utilise le fichier `dnsmasq.conf` pour configurer les mappings de noms de domaine vers les adresses IP des conteneurs.
 
 ## Structure du Projet
 
@@ -224,6 +310,7 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
     - **`Dockerfile`:** Instructions pour construire l'image Docker de l'application D.
     - **`app.py`:** Le code Python principal de l'application D utilisant Flask et Authlib.
     - **`requirements.txt`:** Les dépendances Python de l'application D.
+    - **`templates/`:** Templates HTML pour l'application D.
 - **`application-e/`:** Code source de l'application E.
     - **`Dockerfile`:** Instructions pour construire l'image Docker de l'application E.
     - **`app.py`:** Le code Python principal de l'application E utilisant Flask.
@@ -239,6 +326,14 @@ Voici un tableau récapitulatif des adresses IP et des ports pour chaque applica
     - **`conf/httpd.conf`:** Fichier de configuration Apache pour le proxy.
     - **`conf/httpd-vhosts.conf`:** Fichier de configuration Apache pour les virtual hosts.
 - **`reverse-proxy-admin/`:** Code source du reverse proxy pour l'administration de Keycloak.
+    - **`Dockerfile`:** Instructions pour construire l'image Docker du reverse proxy.
+    - **`conf/httpd.conf`:** Fichier de configuration Apache pour le proxy.
+    - **`conf/httpd-vhosts.conf`:** Fichier de configuration Apache pour les virtual hosts.
+- **`rp-d/`:** Code source du reverse proxy pour l'application D.
+    - **`Dockerfile`:** Instructions pour construire l'image Docker du reverse proxy.
+    - **`proxy.conf`:** Fichier de configuration Apache pour le proxy.
+    - **`oidc.conf`:** Configuration Apache pour l'authentification OpenID Connect avec Keycloak.
+- **`rp-k/`:** Code source du reverse proxy pour Keycloak.
     - **`Dockerfile`:** Instructions pour construire l'image Docker du reverse proxy.
     - **`conf/httpd.conf`:** Fichier de configuration Apache pour le proxy.
     - **`conf/httpd-vhosts.conf`:** Fichier de configuration Apache pour les virtual hosts.

@@ -81,7 +81,20 @@ services:
       keycloak:
         condition: service_started
     restart: always
-  
+
+  application-d:
+      build: ./application-d
+      container_name: application-d
+      ports:
+        - "5003:5000"
+      networks:
+        app-network:
+          ipv4_address: 172.28.0.20
+      depends_on:
+        keycloak:
+          condition: service_started
+      restart: always
+
   application-e:
     build: ./application-e
     container_name: application-e
@@ -147,6 +160,36 @@ services:
       - ./reverse-proxy/proxy.conf:/usr/local/apache2/conf/httpd.conf
       - ./reverse-proxy/oidc.conf:/usr/local/apache2/conf/extra/oidc.conf
 
+  rp-k:
+    build: ./rp-k
+    container_name: rp-k
+    ports:
+      - "7101:80"
+    networks:
+      app-network:
+        ipv4_address: 172.28.0.19
+    depends_on:
+      - keycloak
+    restart: always
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+
+  rp-d:
+    build: ./rp-d
+    container_name: rp-d
+    ports:
+      - "7100:80"
+    networks:
+      app-network:
+         ipv4_address: 172.28.0.18
+    depends_on:
+      - keycloak
+      - application-d
+    restart: always
+    volumes:
+      - ./rp-d/proxy.conf:/usr/local/apache2/conf/httpd.conf
+      - ./rp-d/oidc.conf:/usr/local/apache2/conf/extra/oidc.conf
+ 
   dns-proxy:
       image: andyshinn/dnsmasq
       container_name: dns-proxy

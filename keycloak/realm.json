@@ -95,6 +95,20 @@
       ]
     },
     {
+      "clientId": "rp-d-client",
+      "name": "RP-D Client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "rp-d-secret",
+      "redirectUris": [
+        "http://rp-d/oauth2callback"
+      ],
+       "adminUrl": "http://rp-d/",
+      "webOrigins": [
+          "http://rp-d/"
+      ]
+    },
+    {
       "clientId": "reverse-proxy-user-client",
       "name": "Reverse Proxy User Client",
       "enabled": true,
